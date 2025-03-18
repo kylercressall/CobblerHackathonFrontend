@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
+import femaleAvatar from "./15.png";
+import maleAvatar from "./16.png";
 
 const SUPABASE_URL = "https://gyduwmtijpbgvuveozql.supabase.co"; // Replace with your Supabase URL
 const SUPABASE_ANON_KEY =
@@ -27,27 +29,26 @@ const App = () => {
   const fetchContacts = async (userID) => {
     if (!userID) return;
 
-    const { data, error } = await supabase
+    const { data: relationships, error: relationshipError } = await supabase
       .from("Relationships")
-      .select("contactID, relationship_strength");
+      .select("contactID, relationship_strength")
+      .eq("userID", userID); // make the current user match the userid in the relationship
 
-    if (error) {
-      console.error("Error fetching relationships:", error);
+    if (relationshipError) {
+      console.error("Error fetching relationships:", relationshipError);
       return;
     }
 
-    // Extract contact IDs and relationship strengths
-    const contactMap = new Map(
-      data.map((rel) => [rel.contactID, rel.relationship_strength])
-    );
-    const contactIDs = Array.from(contactMap.keys());
-
-    if (contactIDs.length === 0) {
+    if (!relationships.length) {
       setContacts([]);
       return;
     }
 
-    // Fetch contact details
+    const contactMap = new Map(
+      relationships.map((rel) => [rel.contactID, rel.relationship_strength])
+    );
+    const contactIDs = Array.from(contactMap.keys());
+
     const { data: contactsData, error: contactsError } = await supabase
       .from("Contacts")
       .select("*")
@@ -56,16 +57,15 @@ const App = () => {
     if (contactsError) {
       console.error("Error fetching contacts:", contactsError);
     } else {
-      // Merge contacts with their relationship strength
-      const contactsWithStrength = contactsData.map((contact) => ({
+      const filteredContacts = contactsData.map((contact) => ({
         ...contact,
-        relationship_strength: contactMap.get(contact.contactID) || 0, // Default to 0 if missing
+        relationship_strength: contactMap.get(contact.contactID) || 0, // default to 0 if missing
       }));
-      setContacts(contactsWithStrength);
+
+      setContacts(filteredContacts);
     }
   };
 
-  // Handle dropdown change
   const handleUserChange = (event) => {
     const userID = event.target.value;
     setSelectedUser(userID);
@@ -96,14 +96,12 @@ const App = () => {
           ) : (
             <ul>
               {contacts.map((contact) => {
-                // Hardcode profile images based on gender flag
+                // Hardcode profile images based on temporary gender flag
                 let profileImage = contact.profile_url;
                 if (profileImage === "2") {
-                  profileImage =
-                    "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fthumbs.dreamstime.com%2Fb%2Fdefault-avatar-female-profile-user-icon-picture-portrait-symbol-member-people-flat-style-circle-button-photo-silhouette-270625866.jpg&f=1&nofb=1&ipt=5ab2761eb4a7037c3a625a8c281fd72738d06b0be8d828169cdffe9a9b618684&ipo=images";
+                  profileImage = femaleAvatar;
                 } else if (profileImage === "1") {
-                  profileImage =
-                    "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcampussafetyconference.com%2Fwp-content%2Fuploads%2F2020%2F08%2FiStock-476085198.jpg&f=1&nofb=1&ipt=4bfd8b90ca61a4099ebc30d4027fa0de0255e0aab404eea83afa0305b8a2f343&ipo=images";
+                  profileImage = maleAvatar;
                 }
 
                 return (
